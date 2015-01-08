@@ -84,6 +84,19 @@ class Trainer(object):
                 self._counts[word] = count
         self._total_docs += qd._total_docs
 
+    def prune(self, min_count, min_doc_count):
+        '''
+        Remove all words with count less then min_count
+        or document count less then min_doc_count
+        '''
+        words_to_remove = []
+        for word, count in self._counts.iteritems():
+            if count[0] < min_count or count[1] < min_doc_count:
+                words_to_remove.append(word)
+
+        for word in words_to_remove:
+            del self._counts[word]
+
     @classmethod
     def load_from_file(cls, inputfile):
         ndocs, counts = load_model(inputfile)

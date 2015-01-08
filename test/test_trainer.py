@@ -69,7 +69,16 @@ class TestTrainer(unittest.TestCase):
 
         os.unlink(t[1])
 
+    def test_prune(self):
+        qd = self._get_qd()
+        qd.prune(2, 0)
 
+        self.assertEqual(qd._counts,
+            {'he': [2, 2], 'shovel': [2, 1], 'snow': [2, 2], 'store': [2, 2],
+             'the': [4, 3], 'to': [2, 2]})
+
+        qd.prune(2, 3)
+        self.assertEqual(qd._counts, {'the': [4, 3]})
 
 if __name__ == '__main__':
     unittest.main()
