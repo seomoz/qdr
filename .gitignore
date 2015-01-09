@@ -15,4 +15,8 @@
 dist
 build
 
+# cython genenerated in the build process
+qdr/ranker.cpp
+
+
 

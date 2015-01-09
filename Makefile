@@ -3,6 +3,8 @@ clean:
 	rm -rf build dist
 	# And all of our pyc files
 	rm -f qdr/*.pyc test/*.pyc
+	# All compiled files
+	rm -f qdr/*.so qdr/ranker.cpp
 	# And lastly, .coverage files
 	rm -f .coverage
 
