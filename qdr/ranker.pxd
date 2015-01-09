@@ -15,7 +15,7 @@ cdef extern from "_ranker.cc":
         double bm25
     cdef cppclass QDR:
         QDR(counts_t& counts_in, uint64_t total_docs)
-        scores_t score(doc_t& document, doc_t& query)
+        scores_t score(doc_t& document, doc_t& query) except +
         double get_idf(string)
 
 # only need to define C attributes and methods here

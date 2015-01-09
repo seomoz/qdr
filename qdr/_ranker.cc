@@ -3,7 +3,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
-#include <iostream>
+#include <stdexcept>
 
 
 typedef std::unordered_map<std::string, std::pair<uint64_t, uint64_t> >
@@ -63,6 +63,10 @@ class QDR
         double tfidf(const word_counts_t& doc_counts,
             const word_counts_t& query_counts);
 
+        // BM25
+        double okapi_bm25(const word_counts_t& doc_counts,
+            const word_counts_t& query_counts);
+
         // disable some default constructors
         QDR();
         QDR& operator= (const QDR& other);
@@ -108,11 +112,15 @@ double QDR::get_idf(const std::string& word)
 
 scores_t QDR::score(doc_t& document, doc_t& query)
 {
+    if (document.size() == 0 || query.size() == 0)
+        throw std::invalid_argument(
+            "Document and query both need to be non-empty");
+
     word_counts_t query_counts = count_words(query);
     word_counts_t doc_counts = count_words(document);
     scores_t scores;
     scores.tfidf = tfidf(doc_counts, query_counts);
-    scores.bm25 = 12.1;
+    scores.bm25 = okapi_bm25(doc_counts, query_counts);
     return scores;
 }
 
@@ -139,7 +147,6 @@ double QDR::tfidf(
         if (it_query->second > max_query)
             max_query = it_query->second;
     }
-//    std::cout << "max_query: " << max_query << "\n";
 
     // now make the vectors
     for (word_counts_t::const_iterator it_query = query_counts.begin();
@@ -178,5 +185,59 @@ double QDR::tfidf(
     for (std::size_t k = 0; k < doc_vector.size(); ++k)
         score += query_vector[k] * doc_vector[k];
     return score / doc_vector_len;
+}
+
+
+// magic constants for okapi_bm25 function.  we can allow these to
+// be configurable down the road if needed.
+#define BM25_K1 1.6
+#define BM25_B 0.75
+
+
+double QDR::okapi_bm25(
+    const word_counts_t& doc_counts, const word_counts_t& query_counts)
+{
+    /// Okapi BM25 ranking function
+    // See "An Introduction to Information Retrieval" by Manning,
+    //    Raghavan, Schutz.  Section 11.4.3 (page 233), eqn 11.32
+    // the ranking function is:
+    // SUM_{t in query} log(N / df[t]) * (k1 + 1) * tf[td] /
+    //                  (k1 * ((1 - b) + b * (Ld / Lave)) + tf[td])
+    //
+    // where N = number docs in corpus
+    //  df[t]  =  number docs with term t
+    //  tf[td] = number of occurrences of term t in this document
+    //  Ld = length of this document (# words)
+    //  Lave = average length of documents in corpus
+    //  k1, b = free parameters, empirically set to about
+    //  k1 = 1.2 - 2.0
+    //  b = 0.75
+
+    double Ld = 0.0;
+    for (word_counts_t::const_iterator it_doc = doc_counts.begin();
+            it_doc != doc_counts.end(); ++it_doc)
+        Ld += (double) it_doc->second;
+
+    double Lave = ((double) nwords) / ((double) total_docs);
+    double Ld_Lave = Ld / Lave;
+
+    double score = 0.0;
+    for (word_counts_t::const_iterator it_query = query_counts.begin();
+        it_query != query_counts.end(); ++it_query)
+    {
+        word_counts_t::const_iterator got = doc_counts.find(it_query->first);
+        if (got != doc_counts.end())
+        {
+            double idf = get_idf(it_query->first);
+            double tf_doc = (double) got->second;
+            score += ((double) it_query->second) * idf * (BM25_K1 + 1.0) *
+                tf_doc /
+                (BM25_K1 * ((1.0 - BM25_B) + BM25_B * Ld_Lave) + tf_doc);
+        }
+        // else query word not in document
+        // in this case numerator == 0 so this contribution to score is 0
+    }
+
+    return score;
 }
 
