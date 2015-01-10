@@ -13,6 +13,9 @@ cdef extern from "_ranker.cc":
     ctypedef struct scores_t:
         double tfidf
         double bm25
+        double lm_jm
+        double lm_dirichlet
+        double lm_ad
     cdef cppclass QDR:
         QDR(counts_t& counts_in, uint64_t total_docs)
         scores_t score(doc_t& document, doc_t& query) except +

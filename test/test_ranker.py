@@ -73,6 +73,53 @@ class TestRanker(unittest.TestCase):
 
         self.assertAlmostEqual(computed_score, actual_score)
 
+    def test_lm(self):
+        qd = self._get_qd()
+        computed_scores = qd.score(document, query)
+
+        lam = 0.1
+        mu = 2000.0
+        delta = 0.7
+
+        jm = 0.0
+        dirichlet = 0.0
+        ad = 0.0
+        sum_w_cwd_doc = float(len(document))
+        nwords_corpus = sum(v[0] for v in corpus_unigrams.itervalues())
+        n2p1 = len(corpus_unigrams) + nwords_corpus + 1
+        for word in query:
+            try:
+                word_count_corpus = corpus_unigrams[word][0]
+            except KeyError:
+                word_count_corpus = 0
+            corpus_prob = (word_count_corpus + 1.0) / n2p1
+
+            cwd = 0
+            for doc_word in document:
+                if doc_word == word:
+                    cwd += 1
+
+            if cwd == 0:
+                # not in document
+                jm += np.log(lam * corpus_prob)
+                dirichlet += np.log(mu / (sum_w_cwd_doc + mu) * corpus_prob)
+                ad += np.log(
+                    delta * len(set(document)) / sum_w_cwd_doc * corpus_prob)
+            else:
+                jm += np.log(
+                        (1.0 - lam) * cwd / sum_w_cwd_doc + lam * corpus_prob)
+                dirichlet += np.log(
+                        (cwd + mu * corpus_prob) / (sum_w_cwd_doc + mu))
+                ad += np.log(
+                   max(cwd - delta, 0.0) / sum_w_cwd_doc +
+                   delta * len(set(document)) / sum_w_cwd_doc * corpus_prob)
+
+        print computed_scores
+        print jm, dirichlet, ad
+        self.assertAlmostEqual(computed_scores['lm_jm'], jm)
+        self.assertAlmostEqual(computed_scores['lm_dirichlet'], dirichlet)
+        self.assertAlmostEqual(computed_scores['lm_ad'], ad)
+
 
 if __name__ == '__main__':
     unittest.main()
