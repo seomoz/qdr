@@ -2,6 +2,7 @@
 # c imports
 cimport cython
 from ranker cimport *
+from .trainer import load_model
 
 cdef class QueryDocumentRelevance:
     def __cinit__(self, counts, total_docs):
@@ -27,4 +28,10 @@ cdef class QueryDocumentRelevance:
 
     def get_idf(self, word):
         return self._qdr_ptr.get_idf(word)
+
+    @classmethod
+    def load_from_file(cls, inputfile):
+        ndocs, counts = load_model(inputfile)
+        ret = cls(counts, ndocs)
+        return ret
 

@@ -114,11 +114,23 @@ class TestRanker(unittest.TestCase):
                    max(cwd - delta, 0.0) / sum_w_cwd_doc +
                    delta * len(set(document)) / sum_w_cwd_doc * corpus_prob)
 
-        print computed_scores
-        print jm, dirichlet, ad
         self.assertAlmostEqual(computed_scores['lm_jm'], jm)
         self.assertAlmostEqual(computed_scores['lm_dirichlet'], dirichlet)
         self.assertAlmostEqual(computed_scores['lm_ad'], ad)
+
+    def test_load_from_file(self):
+        import os
+        from tempfile import mkstemp
+        from qdr.trainer import write_model
+
+        t = mkstemp()
+        write_model(corpus_ndocs, corpus_unigrams, t[1])
+        qd = ranker.QueryDocumentRelevance.load_from_file(t[1])
+
+        # we'll just check that one of the word counts is correct
+        self.assertAlmostEqual(qd.get_idf('the'), np.log(corpus_ndocs / 3.0))
+
+        os.remove(t[1])
 
 
 if __name__ == '__main__':
