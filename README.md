@@ -66,12 +66,12 @@ merge the contents of two `Trainer` instances:
 for k, corpus in enumerate(corpus_chunks):
     model = Trainer()
     model.train(corpus)
-    model.serialize_to_file("file%s" % k)
+    model.serialize_to_file("file%s.gz" % k)
 
 # reduce step
-model = Trainer.load_from_file("file0")
+model = Trainer.load_from_file("file0.gz")
 for k in xrange(1, len(corpus_chunks)):
-    model2 = Trainer.load_from_file("file%s" % k)
+    model2 = Trainer.load_from_file("file%s.gz" % k)
     model.update_from_trained(model2)
 
 # prune the final model if needed
@@ -85,7 +85,7 @@ Typical usage:
 ```python
 from qdr import QueryDocumentRelevance
 
-scorer = QueryDocumentRelevance.load_from_file(trained_model)
+scorer = QueryDocumentRelevance.load_from_file('trained_model.gz')
 # document, query are lists of byte strings
 relevance_scores = scorer.score(document, query)
 ```
