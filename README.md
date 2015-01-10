@@ -28,9 +28,76 @@ Methods for Language Models Applied to Ad Hoc Information Retrieval"](http://sch
 Usage
 =====
 
-TODO
+All tokenization and word normalization is handled client side, and all methods
+that accept queries or documents assume they are lists of byte strings,
+not unicode.
 
+There are two separate steps to using the ranking functions: training
+and scoring.
 
+## Training
 
+The `Trainer` class supports incremental training from a large corpus,
+combining separately trained models for map-reduce type data flows,
+pruning of infrequent tokens from large models and serialization.  Typical
+usage:
+
+```python
+from qdr import Trainer
+
+# load corpus -- it's an iterable of documents, each document is a
+# list of byte strings
+model = Trainer()
+model.train(corpus)
+
+# the train method adds documents incrementally so it can be updated with
+# additional documents by calling train again
+model.train(another_corpus)
+
+# write to a file
+model.serialize_to_file(outputfile)
+```
+
+For map-reduce type work, the method `update_counts_from_trained` will
+merge the contents of two `Trainer` instances:
+
+```python
+# map step -- typically this is parallelized
+for k, corpus in enumerate(corpus_chunks):
+    model = Trainer()
+    model.train(corpus)
+    model.serialize_to_file("file%s" % k)
+
+# reduce step
+model = Trainer.load_from_file("file0")
+for k in xrange(1, len(corpus_chunks)):
+    model2 = Trainer.load_from_file("file%s" % k)
+    model.update_from_trained(model2)
+
+# prune the final model if needed
+model.prune(min_word_count, min_doc_count)
+```
+
+## Scoring
+
+Typical usage:
+
+```python
+from qdr import QueryDocumentRelevance
+
+scorer = QueryDocumentRelevance.load_from_file(trained_model)
+# document, query are lists of byte strings
+relevance_scores = scorer.score(document, query)
+```
+
+# Installing
+
+```
+sudo pip install -r requirements.txt
+sudo make install
+```
+
+# Contributing
+Contributions welcome!  Fork, commit, then open a pull request.
 
 
