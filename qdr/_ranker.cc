@@ -76,11 +76,13 @@ class QDR
 
         // BM25
         double okapi_bm25(const word_counts_t& doc_counts,
-            const word_counts_t& query_counts);
+            const word_counts_t& query_counts,
+            const double& Ld);
 
         // language model
         lm_scores_t lm(const word_counts_t& doc_counts,
-            const word_counts_t& query_counts);
+            const word_counts_t& query_counts,
+            const double& sum_count_w_given_doc);
 
         // disable some default constructors
         QDR();
@@ -133,14 +135,22 @@ scores_t QDR::score(doc_t& document, doc_t& query)
         throw std::invalid_argument(
             "Document and query both need to be non-empty");
 
+    // compute counts, doc length, etc now since they are used
+    // in multiple components
     word_counts_t query_counts = count_words(query);
     word_counts_t doc_counts = count_words(document);
 
+    double nwords_document = 0.0;
+    for (word_counts_t::iterator it_doc = doc_counts.begin();
+        it_doc != doc_counts.end(); ++it_doc)
+            nwords_document += (double) it_doc->second;
+
+    // now the scores
     scores_t scores;
     scores.tfidf = tfidf(doc_counts, query_counts);
-    scores.bm25 = okapi_bm25(doc_counts, query_counts);
+    scores.bm25 = okapi_bm25(doc_counts, query_counts, nwords_document);
 
-    lm_scores_t lm_scores = lm(doc_counts, query_counts);
+    lm_scores_t lm_scores = lm(doc_counts, query_counts, nwords_document);
     scores.lm_jm = lm_scores.jm;
     scores.lm_dirichlet = lm_scores.dirichlet;
     scores.lm_ad = lm_scores.ad;
@@ -218,7 +228,8 @@ double QDR::tfidf(
 #define BM25_B 0.75
 
 double QDR::okapi_bm25(
-    const word_counts_t& doc_counts, const word_counts_t& query_counts)
+    const word_counts_t& doc_counts, const word_counts_t& query_counts,
+    const double& Ld)
 {
     /// Okapi BM25 ranking function
     // See "An Introduction to Information Retrieval" by Manning,
@@ -235,11 +246,6 @@ double QDR::okapi_bm25(
     //  k1, b = free parameters, empirically set to about
     //  k1 = 1.2 - 2.0
     //  b = 0.75
-
-    double Ld = 0.0;
-    for (word_counts_t::const_iterator it_doc = doc_counts.begin();
-            it_doc != doc_counts.end(); ++it_doc)
-        Ld += (double) it_doc->second;
 
     double Lave = ((double) nwords) / ((double) total_docs);
     double Ld_Lave = Ld / Lave;
@@ -279,7 +285,7 @@ double QDR::okapi_bm25(
 #define DELTA 0.7
 
 lm_scores_t QDR::lm(const word_counts_t& doc_counts,
-    const word_counts_t& query_counts)
+    const word_counts_t& query_counts, const double& sum_count_w_given_doc)
 {
     /// Language model relevance
     //    Returns:
@@ -302,10 +308,6 @@ lm_scores_t QDR::lm(const word_counts_t& doc_counts,
     //  p(w | C) == corpus unigram probability
 
     // sum_w c(w; d) = total words in document = |d| (for absolute discount)
-    double sum_count_w_given_doc = 0.0;
-    for (word_counts_t::const_iterator it_doc = doc_counts.begin();
-            it_doc != doc_counts.end(); ++it_doc)
-        sum_count_w_given_doc += (double) it_doc->second;
 
     // |d|_u for absolute discount
     double unique_terms = (double) doc_counts.size();
