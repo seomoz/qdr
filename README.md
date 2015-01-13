@@ -90,6 +90,13 @@ scorer = QueryDocumentRelevance.load_from_file('trained_model.gz')
 relevance_scores = scorer.score(document, query)
 ```
 
+For scoring batches of queries against a single document, the `score_batch`
+method is more efficient then calling `score` repeatedly:
+```
+# queries is a list of queries, each query is a list of tokens:
+relevance_scores = scorer.score(document, queries)
+```
+
 # Installing
 
 ```
