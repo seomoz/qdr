@@ -1,7 +1,7 @@
 qdr
 ===
 
-[![Build Status](https://api.travis-ci.org/seomoz/qdr.png)](https://api.travis-ci.org/seomoz/qdr.png)
+[![Build Status](https://api.travis-ci.org/seomoz/qdr.png)](https://travis-ci.org/seomoz/qdr)
 
 Query-Document Relevance ranking functions
 
