@@ -58,6 +58,10 @@ class QDR
         // compute the similarity scores
         scores_t score(doc_t& document, doc_t& query);
 
+        // compute similiary scores for a single doc but list of queries
+        std::vector<scores_t> score_batch(doc_t& document,
+            std::vector<doc_t>& queries);
+
         // get the IDF for a given word
         double get_idf(const std::string& word);
 
@@ -83,6 +87,11 @@ class QDR
         lm_scores_t lm(const word_counts_t& doc_counts,
             const word_counts_t& query_counts,
             const double& sum_count_w_given_doc);
+
+        // low level function used by public methods
+        scores_t score_single(const word_counts_t& doc_counts,
+            const word_counts_t& query_counts,
+            const double& nwords_document);
 
         // disable some default constructors
         QDR();
@@ -143,9 +152,47 @@ scores_t QDR::score(doc_t& document, doc_t& query)
     double nwords_document = 0.0;
     for (word_counts_t::iterator it_doc = doc_counts.begin();
         it_doc != doc_counts.end(); ++it_doc)
-            nwords_document += (double) it_doc->second;
+        nwords_document += (double) it_doc->second;
 
     // now the scores
+    return score_single(doc_counts, query_counts, nwords_document);
+}
+
+std::vector<scores_t> QDR::score_batch(
+    doc_t& document, std::vector<doc_t>& queries)
+{
+    if (document.size() == 0)
+        throw std::invalid_argument(
+            "Document and query both need to be non-empty");
+
+    // compute document level counts once, then iterate through queries
+    word_counts_t doc_counts = count_words(document);
+
+    double nwords_document = 0.0;
+    for (word_counts_t::iterator it_doc = doc_counts.begin();
+        it_doc != doc_counts.end(); ++it_doc)
+        nwords_document += (double) it_doc->second;
+
+    // iterate through queries, compute scores
+    std::vector<scores_t> ret;
+    ret.reserve(queries.size());
+    for (std::vector<doc_t>::iterator it = queries.begin();
+        it != queries.end(); ++it)
+    {
+        if (it->size() == 0)
+            throw std::invalid_argument(
+                "Document and query both need to be non-empty");
+        word_counts_t query_counts = count_words(*it);
+        ret.push_back(score_single(doc_counts, query_counts, nwords_document));
+    }
+
+    return ret;
+}
+
+scores_t QDR::score_single(const word_counts_t& doc_counts,
+        const word_counts_t& query_counts,
+        const double& nwords_document)
+{
     scores_t scores;
     scores.tfidf = tfidf(doc_counts, query_counts);
     scores.bm25 = okapi_bm25(doc_counts, query_counts, nwords_document);

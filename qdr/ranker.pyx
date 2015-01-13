@@ -26,6 +26,16 @@ cdef class QueryDocumentRelevance:
         # cython will handle the conversion for us...
         return self._qdr_ptr.score(document, query)
 
+    def score_batch(self, document, queries):
+        '''
+        Compute the query-document relevance scores for a group of queries
+            against a single document
+
+        document is a list of tokenized words
+        queries is a list of queries, each query is a list of tokenized words
+        '''
+        return self._qdr_ptr.score_batch(document, queries)
+
     def get_idf(self, word):
         return self._qdr_ptr.get_idf(word)
 

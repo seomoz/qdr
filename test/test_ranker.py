@@ -27,6 +27,10 @@ class TestRanker(unittest.TestCase):
         self.assertRaises(ValueError, qd.score, [], query)
         self.assertRaises(ValueError, qd.score, document, [])
         self.assertRaises(ValueError, qd.score, [], [])
+        self.assertRaises(ValueError, qd.score_batch, [], [query])
+        self.assertRaises(ValueError, qd.score_batch, document, [query, []])
+        # but empty queries in score_batch just return an empty list
+        self.assertEqual(qd.score_batch(document, []), [])
 
     def test_tfidf(self):
         qd = self._get_qd()
@@ -131,6 +135,13 @@ class TestRanker(unittest.TestCase):
         self.assertAlmostEqual(qd.get_idf('the'), np.log(corpus_ndocs / 3.0))
 
         os.remove(t[1])
+
+    def test_score_batch(self):
+        qd = self._get_qd()
+        queries = [query, ['buy', 'shovel']]
+        scores = qd.score_batch(document, queries)
+        # we'll assume that the score single works...
+        self.assertEqual(len(scores), 2)
 
 
 if __name__ == '__main__':

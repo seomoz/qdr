@@ -19,6 +19,8 @@ cdef extern from "_ranker.cc":
     cdef cppclass QDR:
         QDR(counts_t& counts_in, uint64_t total_docs)
         scores_t score(doc_t& document, doc_t& query) except +
+        vector[scores_t] score_batch(
+            doc_t& document, vector[doc_t]& queries) except +
         double get_idf(string)
 
 # only need to define C attributes and methods here
