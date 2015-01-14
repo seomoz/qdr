@@ -19,6 +19,10 @@ typedef std::vector<std::string> doc_t;
 word_counts_t count_words(const doc_t& document)
 {
     /// Given a vector of tokens, return a map token -> count in vector
+    // heuristic to set final hash sparsity.  goal = 10%
+    // number of keys in ret is numher unique tokens in document
+    // in avg web page this is about 1/3 the number of total tokens
+    // so this gives hash sparsity of about 1/9 or about 10%
     word_counts_t ret(document.size() * 3);
     for (doc_t::const_iterator it = document.begin();
         it != document.end(); ++it)
@@ -100,15 +104,12 @@ class QDR
 
 };
 
-QDR::QDR(counts_t& counts_in, uint64_t total_docs)
+QDR::QDR(counts_t& counts_in, uint64_t total_docs) : total_docs(total_docs)
 {
-    this->total_docs = total_docs;
-
     // copy the counts data to private member and add up the total
     // number of words and words in vocab
     nwords_vocab = 0;
-    nwords = 0;
-    counts.clear();
+   nwords = 0;
 
     for (counts_t::iterator it = counts_in.begin(); it != counts_in.end();
         ++it)
@@ -118,7 +119,7 @@ QDR::QDR(counts_t& counts_in, uint64_t total_docs)
         nwords += it->second.first;
     }
 
-    n2p1 = (double) nwords + (double) nwords_vocab + 1.0;
+    n2p1 = double(nwords) + double(nwords_vocab) + 1.0;
 }
 
 QDR::~QDR() {}
@@ -131,7 +132,7 @@ double QDR::get_idf(const std::string& word)
     if (got != counts.end())
     {
         // this word is in the corpus
-        doc_freq = (double) got->second.second;
+        doc_freq = got->second.second;
     }
     else
         doc_freq = 1.0;
@@ -140,7 +141,7 @@ double QDR::get_idf(const std::string& word)
 
 scores_t QDR::score(doc_t& document, doc_t& query)
 {
-    if (document.size() == 0 || query.size() == 0)
+    if (document.empty() || query.empty())
         throw std::invalid_argument(
             "Document and query both need to be non-empty");
 
@@ -150,9 +151,9 @@ scores_t QDR::score(doc_t& document, doc_t& query)
     word_counts_t doc_counts = count_words(document);
 
     double nwords_document = 0.0;
-    for (word_counts_t::iterator it_doc = doc_counts.begin();
+    for (word_counts_t::const_iterator it_doc = doc_counts.begin();
         it_doc != doc_counts.end(); ++it_doc)
-        nwords_document += (double) it_doc->second;
+        nwords_document += it_doc->second;
 
     // now the scores
     return score_single(doc_counts, query_counts, nwords_document);
@@ -161,7 +162,7 @@ scores_t QDR::score(doc_t& document, doc_t& query)
 std::vector<scores_t> QDR::score_batch(
     doc_t& document, std::vector<doc_t>& queries)
 {
-    if (document.size() == 0)
+    if (document.empty())
         throw std::invalid_argument(
             "Document and query both need to be non-empty");
 
@@ -169,9 +170,9 @@ std::vector<scores_t> QDR::score_batch(
     word_counts_t doc_counts = count_words(document);
 
     double nwords_document = 0.0;
-    for (word_counts_t::iterator it_doc = doc_counts.begin();
+    for (word_counts_t::const_iterator it_doc = doc_counts.begin();
         it_doc != doc_counts.end(); ++it_doc)
-        nwords_document += (double) it_doc->second;
+        nwords_document += it_doc->second;
 
     // iterate through queries, compute scores
     std::vector<scores_t> ret;
@@ -256,7 +257,7 @@ double QDR::tfidf(
     for (word_counts_t::const_iterator it_doc = doc_counts.begin();
         it_doc != doc_counts.end(); ++it_doc)
     {
-        double p = ((double) it_doc->second) * get_idf(it_doc->first);
+        double p = it_doc->second * get_idf(it_doc->first);
         doc_vector_len += p * p;
     }
     doc_vector_len = sqrt(doc_vector_len);
@@ -271,8 +272,8 @@ double QDR::tfidf(
 
 // magic constants for okapi_bm25 function.  we can allow these to
 // be configurable down the road if needed.
-#define BM25_K1 1.6
-#define BM25_B 0.75
+const double BM25_K1 = 1.6;
+const double BM25_B = 0.75;
 
 double QDR::okapi_bm25(
     const word_counts_t& doc_counts, const word_counts_t& query_counts,
@@ -305,8 +306,8 @@ double QDR::okapi_bm25(
         if (got != doc_counts.end())
         {
             double idf = get_idf(it_query->first);
-            double tf_doc = (double) got->second;
-            score += ((double) it_query->second) * idf * (BM25_K1 + 1.0) *
+            double tf_doc = got->second;
+            score += it_query->second * idf * (BM25_K1 + 1.0) *
                 tf_doc /
                 (BM25_K1 * ((1.0 - BM25_B) + BM25_B * Ld_Lave) + tf_doc);
         }
@@ -325,11 +326,11 @@ double QDR::okapi_bm25(
 // for "title queries" (short queries).  From the conclusion,
 // 3rd to last paragraph:
 // Jelinek-Mercer
-#define LAM 0.1
+const double LAM = 0.1;
 // Dirichlet
-#define MU 2000.0
+const double MU = 2000.0;
 // absolute discount
-#define DELTA 0.7
+const double DELTA = 0.7;
 
 lm_scores_t QDR::lm(const word_counts_t& doc_counts,
     const word_counts_t& query_counts, const double& sum_count_w_given_doc)
@@ -357,7 +358,7 @@ lm_scores_t QDR::lm(const word_counts_t& doc_counts,
     // sum_w c(w; d) = total words in document = |d| (for absolute discount)
 
     // |d|_u for absolute discount
-    double unique_terms = (double) doc_counts.size();
+    double unique_terms = doc_counts.size();
 
     lm_scores_t alpha_d = {
         LAM,
@@ -379,7 +380,7 @@ lm_scores_t QDR::lm(const word_counts_t& doc_counts,
         uint64_t word_count_corpus = 0;
         if (got_corpus != counts.end())
             word_count_corpus = got_corpus->second.first;
-        double p_w_given_C = ((double) word_count_corpus + 1.0) / n2p1;
+        double p_w_given_C = (word_count_corpus + 1.0) / n2p1;
 
         // count of word in document
         word_counts_t::const_iterator got_doc = doc_counts.find(
