@@ -1,0 +1,22 @@
+*.pyc
+
+# vim temp files
+*.swp
+
+# nose coverage info
+.coverage
+
+# C extensions
+*.so
+
+# Packages
+*.egg
+*.egg-info
+dist
+build
+
+# cython genenerated in the build process
+qdr/ranker.cpp
+
+
+

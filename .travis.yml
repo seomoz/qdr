@@ -1,0 +1,13 @@
+language: python
+python:
+  - 2.7
+script: make test
+virtualenv:
+  system_site_packages: true
+cache:
+  - apt
+  - pip
+install:
+  - sudo apt-get -y install python-numpy
+  - pip install -r requirements.txt --use-mirrors
+  - python setup.py build_ext --inplace
