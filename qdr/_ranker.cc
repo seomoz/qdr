@@ -109,7 +109,7 @@ QDR::QDR(counts_t& counts_in, uint64_t total_docs) : total_docs(total_docs)
     // copy the counts data to private member and add up the total
     // number of words and words in vocab
     nwords_vocab = 0;
-   nwords = 0;
+    nwords = 0;
 
     for (counts_t::iterator it = counts_in.begin(); it != counts_in.end();
         ++it)
@@ -128,7 +128,7 @@ double QDR::get_idf(const std::string& word)
 {
     /// Get log(total docs / doc count for word) == IDF
     double doc_freq;
-    counts_t::iterator got = counts.find(word);
+    counts_t::const_iterator got = counts.find(word);
     if (got != counts.end())
     {
         // this word is in the corpus
@@ -136,7 +136,7 @@ double QDR::get_idf(const std::string& word)
     }
     else
         doc_freq = 1.0;
-    return log((double) total_docs / doc_freq);
+    return log(double(total_docs) / doc_freq);
 }
 
 scores_t QDR::score(doc_t& document, doc_t& query)
@@ -295,7 +295,7 @@ double QDR::okapi_bm25(
     //  k1 = 1.2 - 2.0
     //  b = 0.75
 
-    double Lave = ((double) nwords) / ((double) total_docs);
+    double Lave = double(nwords) / double(total_docs);
     double Ld_Lave = Ld / Lave;
 
     double score = 0.0;
