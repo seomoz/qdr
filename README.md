@@ -72,7 +72,7 @@ for k, corpus in enumerate(corpus_chunks):
 model = Trainer.load_from_file("file0.gz")
 for k in xrange(1, len(corpus_chunks)):
     model2 = Trainer.load_from_file("file%s.gz" % k)
-    model.update_from_trained(model2)
+    model.update_counts_from_trained(model2)
 
 # prune the final model if needed
 model.prune(min_word_count, min_doc_count)
